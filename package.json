@@ -1,0 +1,23 @@
+{
+  "name": "fake-exchange",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "ts-node index.ts",
+    "test": "ts-jest help"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/node": "*",
+    "typescript": "*",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.2.3",
+    "ts-jest": "^29.0.3",
+    "ts-node": "^10.9.1"
+  }
+}
