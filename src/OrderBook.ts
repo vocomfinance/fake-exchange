@@ -5,10 +5,30 @@ import {TradingPair} from './Exchange';
 type UID = string;
 const createUID = (): UID => uuidv4();
 
-interface ITransaction {
+interface ITrade {
   id: UID,
-  buyer: IOrder,
-  seller: IOrder,
+  bidOrderId: UID,
+  askOrderId: UID,
+  timestamp: Timestamp
+}
+
+class Trade implements ITrade {
+  id: UID;
+  timestamp: Timestamp;
+  bidOrderId: UID;
+  askOrderId: UID;
+  shares: number;
+  price: number;
+
+  constructor(bidOrderId: UID, askOrderId: UID, shares: number, price: number) {
+    this.id = uuidv4();
+    this.timestamp = Date.now();
+
+    this.bidOrderId = bidOrderId;
+    this.askOrderId = askOrderId;
+    this.shares = shares;
+    this.price = price;
+  }
 }
 
 interface IOrder {
@@ -16,7 +36,7 @@ interface IOrder {
   details: IOrderDetails,
   status: OrderStatus,
   timestamp: Timestamp,
-  transactions: ITransaction[],
+  tradeIds: UID[],
 }
 
 type Timestamp = number;
@@ -26,14 +46,15 @@ class Order implements IOrder {
   details: IOrderDetails;
   status: OrderStatus;
   timestamp: Timestamp;
-  transactions: ITransaction[];
+  tradeIds: UID[];
 
-  constructor(id: UID, details: IOrderDetails, status: OrderStatus, timestamp: Timestamp, transactions: ITransaction[]) {
-    this.id = id;
+  constructor(details: IOrderDetails, status: OrderStatus) {
+    this.id = createUID();
+    this.timestamp = Date.now();
+
     this.details = details;
     this.status = status;
-    this.timestamp = timestamp;
-    this.transactions = transactions;
+    this.tradeIds = [];
   }
 
   isSellOrder() {
@@ -46,6 +67,14 @@ class Order implements IOrder {
 
   canBeFilled() {
     return [OrderStatus.Posted, OrderStatus.PartiallyFilled].includes(this.status);
+  }
+
+  isNewerThan(order: Order) : boolean {
+    return this.timestamp > order.timestamp;
+  }
+
+  addTrade(trade: Trade) {
+    this.tradeIds.push(trade.id);
   }
 
   priorityAgainst(order: Order) : number {
@@ -74,17 +103,17 @@ enum OrderStatus {
 }
 
 type OrdersMap = { [key: UID]: Order };
-type TransactionsMap = { [key: UID]: ITransaction };
+type TradesMap = { [key: UID]: Trade };
 
 class OrderBook {
   tradingPair: TradingPair;
   orders: OrdersMap;
-  transactions: TransactionsMap;
+  trades: TradesMap;
 
   constructor(tradingPair: TradingPair) {
     this.tradingPair = tradingPair;
     this.orders = {} as OrdersMap;
-    this.transactions = {} as TransactionsMap;
+    this.trades = {} as TradesMap;
   }
 
   pendingOrders() {
@@ -93,7 +122,6 @@ class OrderBook {
   }
 
   sellOrders() {
-    console.log(this.pendingOrders());
     return this.pendingOrders()
       .filter((order: Order) => order.isSellOrder())
       .sort((l, r) => l.priorityAgainst(r));
@@ -115,12 +143,77 @@ class OrderBook {
     return orders[orders.length - 1];
   }
 
-  createOrder(orderDetails: IOrderDetails) : Order {
-    const id = createUID();
+  createOrder(orderDetails: IOrderDetails) : Order | never {
+    if (!this.areOrderDetailsValid(orderDetails)) throw new Error('Can not create order with this details')
 
-    const order = new Order(id, orderDetails, OrderStatus.Posted, Date.now(), []);
-    this.orders[id] = order;
+    const order = new Order(orderDetails, OrderStatus.Posted);
+    this.fillOrderIfPossible(order);
+    this.saveOrder(order);
+
+    console.log(order);
+
     return order;
+  }
+
+  private areOrderDetailsValid(orderDetails: IOrderDetails) : boolean {
+    return orderDetails.shares > 0 && orderDetails.price > 0;
+  }
+
+  cancelOrderById(orderId: UID) : Order | never {
+    const order = this.orders[orderId];
+    if(!order.canBeFilled()) throw new Error('Cannot cancel an order already cancelled or filled.');
+    order.status = OrderStatus.Cancelled;
+    this.saveOrder(order);
+    return order;
+  }
+
+  saveOrder(order: Order) {
+    this.orders[order.id] = order;
+  }
+
+  saveTrade(trade: Trade) {
+    this.trades[trade.id] = trade;
+  }
+
+  getTradesByIds(tradeIds: UID[]) : Trade[] {
+    return tradeIds.map((tradeId) => this.trades[tradeId]);
+  }
+
+  canBeMatchedWithOrder(order: Order): boolean {
+    if (!order.canBeFilled()) return false;
+    else if (order.isBuyOrder()) return order.details.price >= this.askOrder()?.details?.price;
+    else return order.details.price <= this.bidOrder()?.details?.price;
+  }
+
+  private fillOrderIfPossible(order: Order) {
+    if(!this.canBeMatchedWithOrder(order)) return;
+    this.fillOrder(order);
+    this.fillOrderIfPossible(order);
+  }
+
+  private fillOrder(order: Order) {
+    if(order.isBuyOrder()) this.createTradeBetween(order, this.askOrder());
+    else { this.createTradeBetween(this.bidOrder(), order) }
+  }
+
+  private createTradeBetween(bidOrder: Order, askOrder: Order) : Trade {
+    const sharesToBeTraded = Math.min(bidOrder.details.shares, askOrder.details.shares);
+    const prices = [askOrder.details.price, bidOrder.details.price]
+    const tradePrice = bidOrder.isNewerThan(askOrder) ? Math.min(...prices) : Math.max(...prices);
+
+    const trade = new Trade(bidOrder.id, askOrder.id, sharesToBeTraded, tradePrice);
+
+    [bidOrder, askOrder].map((o) => {
+      o.details.shares -= sharesToBeTraded;
+      o.status = o.details.shares == 0 ? OrderStatus.Filled : OrderStatus.PartiallyFilled;
+      o.addTrade(trade);
+      this.saveOrder(o);
+      return o;
+    });
+
+    this.saveTrade(trade);
+
+    return trade;
   }
 };
 
