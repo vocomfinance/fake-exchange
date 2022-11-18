@@ -1,16 +1,21 @@
-import OrderBook, {Order, IOrderDetails, OrderType, OrderStatus} from "../OrderBook";
+import OrderBook, {Order, IOrderDetails, OrderType, OrderStatus, OrderBookEventCallback} from "../OrderBook";
+import { EventEmitter } from "stream";
 
 const uidRegexp = new RegExp(/^[0-9A-F]{8}-[0-9A-F]{4}-4[0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$/i);
 
 describe('with an order book for a fake share', () => {
   let orderBook: OrderBook;
+  const eventCallbackMock = jest.fn((eventName: string, payload: any) => {});
 
   beforeEach(() => {
+    eventCallbackMock.mockClear();
+
     orderBook = new OrderBook({
+      id: 'FAKE',
       name: 'Fake Company Inc',
       stock_symbol: 'FAKE',
       currency: 'USD',
-    });
+    }, eventCallbackMock);
   });
 
   describe('when creating a buy order', () => {
@@ -191,9 +196,9 @@ describe('with an order book for a fake share', () => {
       lowestBid = orderBook.createOrder({ type: OrderType.LimitBuy, shares: 100, price: 100, });
 
       oldestAndLowestAsk = orderBook.createOrder({ type: OrderType.LimitSell, shares: 100, price: 130 });
+      highestAsk = orderBook.createOrder({ type: OrderType.LimitSell, shares: 100, price: 140 });
       newerLowestAsk = orderBook.createOrder({ type: OrderType.LimitSell, shares: 100, price: 130 });
       newerLowestAsk.timestamp += 1;
-      highestAsk = orderBook.createOrder({ type: OrderType.LimitSell, shares: 100, price: 140 });
     });
 
     describe('when acessing the bid orders', () => {
@@ -405,6 +410,8 @@ describe('with an order book for a fake share', () => {
           });
         });
       });
+
+      it.todo('can be partially or totally filled with multiple asks in order book and prices');
     });
   });
 });

@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import {EventEmitter} from 'stream';
 
 import {TradingPair} from './Exchange';
 
@@ -105,15 +106,18 @@ enum OrderStatus {
 type OrdersMap = { [key: UID]: Order };
 type TradesMap = { [key: UID]: Trade };
 
+type OrderBookEventCallback = (eventName: string, payload: any) => void;
 class OrderBook {
   tradingPair: TradingPair;
   orders: OrdersMap;
   trades: TradesMap;
+  eventCallback: OrderBookEventCallback;
 
-  constructor(tradingPair: TradingPair) {
+  constructor(tradingPair: TradingPair, eventCallback: OrderBookEventCallback) {
     this.tradingPair = tradingPair;
     this.orders = {} as OrdersMap;
     this.trades = {} as TradesMap;
+    this.eventCallback = eventCallback;
   }
 
   pendingOrders() {
@@ -150,7 +154,7 @@ class OrderBook {
     this.fillOrderIfPossible(order);
     this.saveOrder(order);
 
-    console.log(order);
+    this.eventCallback('newOrder', order);
 
     return order;
   }
@@ -164,6 +168,8 @@ class OrderBook {
     if(!order.canBeFilled()) throw new Error('Cannot cancel an order already cancelled or filled.');
     order.status = OrderStatus.Cancelled;
     this.saveOrder(order);
+
+    this.eventCallback('orderCanceled', order);
     return order;
   }
 
@@ -212,6 +218,7 @@ class OrderBook {
     });
 
     this.saveTrade(trade);
+    this.eventCallback('trade', trade);
 
     return trade;
   }
@@ -223,5 +230,6 @@ export {
   Order,
   IOrderDetails,
   OrderType,
-  OrderStatus
+  OrderStatus,
+  OrderBookEventCallback,
 }
