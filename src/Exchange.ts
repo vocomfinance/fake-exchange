@@ -67,6 +67,7 @@ class Exchange {
     const commandHandler = {
       ping: () => ({ response: 'pong' }),
       createOrder: () => this.createOrderFor(message),
+      getTradingPairs: () => ({ response: this.tradingPairs }),
     }[message.commandName] || unknownHandler;
 
     return commandHandler() as MessageRpcReply;

@@ -18,19 +18,30 @@ const sub = new zmq.Subscriber;
 //   console.log(result.toString());
 // }
 
+// const runRpc = async () => {
+//   await request.connect(rpcAddress);
+
+//   await request.send(JSON.stringify({
+//     commandName: 'createOrder',
+//     payload: {
+//       tradingPairId: 'fake',
+//       orderDetails: {
+//         type: 1,
+//         shares: 10,
+//         price: 10.51,
+//       }
+//     },
+//   }));
+//   const [result] = await request.receive();
+
+//   console.log(result.toString());
+// }
+
 const runRpc = async () => {
   await request.connect(rpcAddress);
 
   await request.send(JSON.stringify({
-    commandName: 'createOrder',
-    payload: {
-      tradingPairId: 'fake',
-      orderDetails: {
-        type: 1,
-        shares: 10,
-        price: 10.51,
-      }
-    },
+    commandName: 'getTradingPairs',
   }));
   const [result] = await request.receive();
 
