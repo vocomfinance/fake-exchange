@@ -1,5 +1,5 @@
 import MessageBroker, {IMessageBroker, MessageRpcCommand, MessageRpcReply} from "./MessageBroker";
-import OrderBook, { OrderBookEventCallback } from "./OrderBook";
+import OrderBook, { OrderBookEventCallback, IOrderDetails } from "./OrderBook";
 
 interface TradingPair {
   id: string,
@@ -50,12 +50,30 @@ class Exchange {
     });
   }
 
-  processRpcCall(message: MessageRpcCommand): MessageRpcReply {
-    return {
-      response: {
-        text: `we getting your command: ${message.commandName}`
-      }
+  createOrderFor(message: MessageRpcCommand): MessageRpcReply {
+    const tradingPairId = message.payload?.tradingPairId;
+    const orderBook = this.orderBooks[tradingPairId];
+    if (orderBook === undefined) return { error: 'INVALID_TRADING_PAIR_ID' };
+    try {
+      const order = orderBook.createOrder(message.payload?.orderDetails as IOrderDetails);
+      return { response: order }
+    } catch (error) {
+      return { error: 'CAN_NOT_CREATE_ORDER', errorMessage: error?.toString() }
     }
+  }
+
+  executeHandlerForCommand(message: MessageRpcCommand) {
+    const unknownHandler = () => ({ error: 'unknown_command', errorMessage: `${message.commandName} is not an accepted command` });
+    const commandHandler = {
+      ping: () => ({ response: 'pong' }),
+      createOrder: () => this.createOrderFor(message),
+    }[message.commandName] || unknownHandler;
+
+    return commandHandler() as MessageRpcReply;
+  }
+
+  processRpcCall(message: MessageRpcCommand): MessageRpcReply {
+    return this.executeHandlerForCommand(message);
   }
 }
 

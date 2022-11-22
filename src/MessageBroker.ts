@@ -5,8 +5,15 @@ interface MessageRpcCommand {
   payload: any;
 }
 
-interface MessageRpcReply {
+type MessageRpcReply = MessageRpcReplySuccess | MessageRpcReplyError;
+
+interface MessageRpcReplySuccess {
   response: any;
+}
+
+interface MessageRpcReplyError {
+  error: string;
+  errorMessage?: string;
 }
 
 type MessageBrokerRpcCallback = (msg: MessageRpcCommand) => MessageRpcReply;

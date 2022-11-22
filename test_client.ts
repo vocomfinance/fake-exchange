@@ -6,12 +6,31 @@ const eventAddress = 'tcp://127.0.0.1:3001';
 const request = new zmq.Request;
 const sub = new zmq.Subscriber;
 
+// const runRpc = async () => {
+//   await request.connect(rpcAddress);
+
+//   await request.send(JSON.stringify({
+//     commandName: 'ping',
+//     payload: 'ignored shitload',
+//   }));
+//   const [result] = await request.receive();
+
+//   console.log(result.toString());
+// }
+
 const runRpc = async () => {
   await request.connect(rpcAddress);
 
   await request.send(JSON.stringify({
-    commandName: 'what is ligma?',
-    payload: 'i have this question',
+    commandName: 'createOrder',
+    payload: {
+      tradingPairId: 'fake',
+      orderDetails: {
+        type: 1,
+        shares: 10,
+        price: 10.51,
+      }
+    },
   }));
   const [result] = await request.receive();
 

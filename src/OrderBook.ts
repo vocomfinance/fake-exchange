@@ -1,5 +1,4 @@
 import { v4 as uuidv4 } from 'uuid';
-import {EventEmitter} from 'stream';
 
 import {TradingPair} from './Exchange';
 
