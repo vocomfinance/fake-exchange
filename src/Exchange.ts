@@ -44,8 +44,8 @@ class Exchange {
     });
   }
 
-  async start() {
-    await this.messageBroker.listen('127.0.0.1', 3000, 3001, (msg: MessageRpcCommand) => {
+  async start(host: string, rpcPort: number, eventsPort: number) {
+    await this.messageBroker.listen(host, rpcPort, eventsPort, (msg: MessageRpcCommand) => {
       return this.processRpcCall(msg);
     });
   }

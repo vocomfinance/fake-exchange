@@ -1,4 +1,4 @@
-import OrderBook, {Order, IOrderDetails, OrderType, OrderStatus, OrderBookEventCallback} from "../OrderBook";
+import OrderBook, {Order, IOrderDetails, OrderType, OrderStatus, OrderBookEventCallback} from "../src/OrderBook";
 import { EventEmitter } from "stream";
 
 const uidRegexp = new RegExp(/^[0-9A-F]{8}-[0-9A-F]{4}-4[0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$/i);

@@ -38,8 +38,8 @@ class MessageBroker implements IMessageBroker {
 
   async listen(host: string, rpcPort: number, eventsPort: number, rpcCallback: MessageBrokerRpcCallback) {
     await this.pub.bind(`tcp://${host}:${eventsPort}`);
-
     await this.replier.bind(`tcp://${host}:${rpcPort}`);
+    console.info(`Message Broker listening at: ${host}\nRPC Port: ${rpcPort}\nEvents Port: ${eventsPort}`);
 
     for await (const [msg] of this.replier) {
       const response = rpcCallback(JSON.parse(msg.toString()))
